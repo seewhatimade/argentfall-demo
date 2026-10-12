@@ -3153,7 +3153,7 @@ function raycast(L, x0, y0, angle, maxDist, step = 2) {
     x += dx;
     y += dy;
     d += step;
-    if (L.solid(Math.floor(x / TILE), Math.floor(y / TILE))) return { x, y, dist: d, hit: true };
+    if ((L.solidShot || L.solid).call(L, Math.floor(x / TILE), Math.floor(y / TILE))) return { x, y, dist: d, hit: true };
   }
   return { x, y, dist: d, hit: false };
 }
@@ -3262,8 +3262,8 @@ var Projectile = class {
         this.vx *= 0.7;
         if (Math.abs(this.vy) < 30) this.vy = 0;
       } else this.y += this.vy * dt;
-      if (this.x < 0 || this.x > world2.width * TILE) {
-        this.die(true);
+      if (this.x < -64 || this.x > world2.width * TILE + 64) {
+        this.remove = true;
         return;
       }
     } else {
@@ -3292,7 +3292,11 @@ var Projectile = class {
       lightning(world2, this.cx, this.cy, this.cx + Math.cos(a) * len, this.cy + Math.sin(a) * len, this.layer, PAL[d.arcs.color] || PAL.lime, PAL.white, 3, 3, 0.08, 1);
     }
     if (d.dim) world2.dimTarget = Math.max(world2.dimTarget || 0, d.dim);
-    if (d.bounce === void 0 && L && (solidPoint(L, this.cx, this.cy) || this.x < 0 || this.x > world2.width * TILE)) {
+    if (this.x < -64 || this.x > world2.width * TILE + 64) {
+      this.remove = true;
+      return;
+    }
+    if (d.bounce === void 0 && L && L.solidShot(Math.floor(this.cx / TILE), Math.floor(this.cy / TILE))) {
       this.die(true);
       return;
     }
@@ -3695,6 +3699,12 @@ var Render = {
     const executing = !opts.editor && pl && (pl.gloryT > 0 && pl.gloryTarget || sawing);
     const victim = gf ? gf.target : executing ? pl.gloryT > 0 ? pl.gloryTarget : pl.sawTarget : null;
     const gz = this.gz || (this.gz = { k: 1, fx: W / 2, fy: H / 2 });
+    const barsFor = (yTop, yBot) => {
+      const base = Math.round(22 * Math.min(1, (gz.k - 1) / 0.3)), cy = Math.round(world2.camera.y);
+      const st = (yTop - cy - gz.fy) * gz.k + gz.fy, sb = (yBot - cy - gz.fy) * gz.k + gz.fy;
+      return [Math.max(0, Math.min(base, Math.floor(st - 6))), Math.max(0, Math.min(base, Math.floor(H - HUD_H - sb - 6)))];
+    };
+    const pairRect = (a, b) => [Math.min(a.y, b ? b.y : a.y), Math.max(a.y + a.h, b ? b.y + b.h : a.y + a.h)];
     if (gf || executing) {
       const m = victim;
       gz.fx = (m.cx + pl.cx) / 2 - world2.camera.x;
@@ -3726,10 +3736,10 @@ var Render = {
         });
       }
       g.restore();
-      const bar3 = Math.round(22 * Math.min(1, (gz.k - 1) / 0.3));
+      const [bt, bb] = barsFor(...pairRect(pl, m));
       g.fillStyle = "#000";
-      g.fillRect(0, 0, W, bar3);
-      g.fillRect(0, H - HUD_H - bar3, W, bar3);
+      g.fillRect(0, 0, W, bt);
+      g.fillRect(0, H - HUD_H - bb, W, bb);
       if (gf) {
         gf.t -= 1 / 60;
         if (gf.t <= 0) world2.gloryFreeze = null;
@@ -3744,10 +3754,10 @@ var Render = {
     this._drawWorldInner(g, world2, opts);
     if (zooming) {
       g.restore();
-      const bar3 = Math.round(22 * Math.min(1, (gz.k - 1) / 0.3));
+      const [bt, bb] = pl ? barsFor(...pairRect(pl, null)) : [0, 0];
       g.fillStyle = "#000";
-      g.fillRect(0, 0, W, bar3);
-      g.fillRect(0, H - HUD_H - bar3, W, bar3);
+      g.fillRect(0, 0, W, bt);
+      g.fillRect(0, H - HUD_H - bb, W, bb);
     }
     if (!opts.editor) {
       if (world2.whiteFlash > 0) {
@@ -7783,6 +7793,11 @@ var Layer = class {
   solid(tx, ty) {
     if (tx < 0 || tx >= this.world.width) return true;
     if (ty < 0 || ty >= this.world.height) return false;
+    return Tiles.isSolid(this.grid[ty][tx]);
+  }
+  /** Solidity for shots: the map edge is open, so bullets and projectiles fly off rather than stopping at an invisible wall. */
+  solidShot(tx, ty) {
+    if (tx < 0 || tx >= this.world.width || ty < 0 || ty >= this.world.height) return false;
     return Tiles.isSolid(this.grid[ty][tx]);
   }
   oneway(tx, ty) {
