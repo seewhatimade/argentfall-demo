@@ -139,7 +139,10 @@
 <script>
   (() => {
     const touchOnly = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
-    if (!touchOnly) return;
+    // Stylus phones and Pencil iPads report a fine pointer, so also gate on a mobile browser (iPadOS poses as a Mac)
+    const ua = navigator.userAgent;
+    const mobileUA = navigator.userAgentData?.mobile || /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (!touchOnly && !mobileUA) return;
     const gate = document.getElementById("mobile-gate"), copy = document.getElementById("mobile-gate-copy");
     gate.classList.remove("hidden");
     copy.onclick = async () => {
