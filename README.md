@@ -1,6 +1,6 @@
 # Argentfall
 
-Rip and tear, adorably.
+Cute. Small. Very angry.
 
 **Play:** https://seewhatimade.github.io/argentfall-demo/
 
