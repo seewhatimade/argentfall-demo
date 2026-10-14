@@ -3081,7 +3081,8 @@ var Tiles = {
     damage: { label: "Hurts", col: PAL.scarlet, glyph: [".#.", "###", "###"] },
     liquid: { label: "Liquid", col: PAL.sky, glyph: [".#.", "###", ".#."] },
     breakable: { label: "Breakable", col: PAL.orange, glyph: ["#..", ".#.", "..#"] },
-    fake: { label: "Fake wall", col: PAL.magenta, glyph: ["##.", "..#", ".#."] }
+    fake: { label: "Fake wall", col: "#ff4fe0", glyph: ["##.", "..#", ".#."] }
+    // brighter than PAL.magenta: it has to show over the dark metal it imitates
   },
   /** What a tile does, as trait ids for the palette badges and the editor's collision view. */
   traits(ch) {
@@ -13519,13 +13520,15 @@ Load anyway?`, { title: "Import", ok: "Load anyway" })) return;
       }
       if (tr.includes("breakable") || tr.includes("fake")) {
         const col = tr.includes("fake") ? T.fake.col : T.breakable.col;
-        g.fillStyle = alpha(col, 0.3);
+        g.fillStyle = alpha(col, 0.45);
         g.fillRect(x, y, TILE, TILE);
         g.fillStyle = col;
         for (let i = 0; i < TILE; i++) for (const o of [0, 8]) {
           const d = (i + o) % TILE;
-          g.fillRect(x + d, y + i, 1, 1);
+          g.fillRect(x + d, y + i, 2, 1);
         }
+        g.strokeStyle = col;
+        g.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
       }
     }
     let lx = 4;
